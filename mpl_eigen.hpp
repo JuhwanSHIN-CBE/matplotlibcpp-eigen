@@ -10,6 +10,7 @@
 #include <cstdint> // <cstdint> requires c++11 support
 #include <functional>
 #include <unordered_map>
+#include <type_traits> // for Eigen support
 
 #include <Python.h>
 
@@ -35,6 +36,11 @@
 #  define PyString_FromString PyUnicode_FromString
 #  define PyInt_FromLong PyLong_FromLong
 #  define PyString_FromString PyUnicode_FromString
+#endif
+
+// for Eigen support
+#ifdef EIGEN_CORE_H
+#  define EIGEN_ENABLED
 #endif
 
 
@@ -280,6 +286,39 @@ template <> struct select_npy_type<uint16_t> { const static NPY_TYPES type = NPY
 template <> struct select_npy_type<uint32_t> { const static NPY_TYPES type = NPY_ULONG; };
 template <> struct select_npy_type<uint64_t> { const static NPY_TYPES type = NPY_UINT64; };
 
+// for Eigen support
+// recognize whether a given object is an Eigen Array object.
+#ifdef EIGEN_ENABLED
+
+template <typename T>
+struct _is_Eigen_1D_Array_impl : std::false_type {};
+
+template <typename Scalar, int rows>
+struct _is_Eigen_1D_Array_impl<Eigen::Array<Scalar, rows, 1>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_Eigen_1D_Array()
+{
+    return _is_Eigen_1D_Array_impl<T>::value;
+}
+
+template <typename T>
+struct _is_Eigen_2D_Array_impl : std::false_type {};
+
+template <typename Scalar, int rows, int cols>
+struct _is_Eigen_2D_Array_impl<Eigen::Array<Scalar, rows, cols>> : std::true_type {};
+
+template <typename Scalar, int rows>
+struct _is_Eigen_2D_Array_impl<Eigen::Array<Scalar, rows, 1>> : std::false_type {};
+
+template <typename T>
+constexpr bool is_Eigen_2D_Array()
+{
+    return _is_Eigen_2D_Array_impl<T>::value;
+}
+
+#endif
+
 template<typename Numeric>
 PyObject* get_array(const std::vector<Numeric>& v)
 {
@@ -298,6 +337,30 @@ PyObject* get_array(const std::vector<Numeric>& v)
     PyObject* varray = PyArray_SimpleNewFromData(1, &vsize, type, (void*)(v.data()));
     return varray;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+PyObject* get_array(const T& v)
+{
+    detail::_interpreter::get();    // interpreter needs to be initialized for the numpy commands to work
+    NPY_TYPES type = select_npy_type<typename Eigen::DenseBase<T>::Scalar>::type;
+    if (type == NPY_NOTYPE)
+    {
+        Eigen::ArrayXd vd(v.rows());
+        vd = v.template cast <double> ();
+        npy_intp vsize = vd.size();
+        PyObject* varray = PyArray_SimpleNewFromData(1, &vsize, NPY_DOUBLE, (void*)(vd.data()));
+        return varray;
+    }
+
+    npy_intp vsize = v.rows();
+    PyObject* varray = PyArray_SimpleNewFromData(1, &vsize, type, (void*)(v.data()));
+    return varray;
+}
+
+#endif
 
 template<typename Numeric>
 PyObject* get_2darray(const std::vector<::std::vector<Numeric>>& v)
@@ -322,6 +385,38 @@ PyObject* get_2darray(const std::vector<::std::vector<Numeric>>& v)
 
     return reinterpret_cast<PyObject *>(varray);
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_2D_Array<T>()>>
+PyObject* get_2darray(const T& v)
+{
+    detail::_interpreter::get();    // interpreter needs to be initialized for the numpy commands to work
+    if (v.cols() < 1) throw std::runtime_error("get_2d_array v too small");
+    NPY_TYPES type = select_npy_type<typename Eigen::DenseBase<T>::Scalar>::type;
+
+    if (type == NPY_NOTYPE)
+    {
+        Eigen::ArrayXXd vd(v.rows(), v.cols());
+        vd = v.template cast <double> ();
+        npy_intp vsize[2] = {
+            static_cast<npy_intp>(vd.rows()),
+            static_cast<npy_intp>(vd.cols())
+        };
+        PyObject* varray = PyArray_SimpleNewFromData(2, &vsize[0], NPY_DOUBLE, (void*)(vd.data()));
+        return varray;
+    }
+
+    npy_intp vsize[2] = {
+        static_cast<npy_intp>(v.rows()),
+        static_cast<npy_intp>(v.cols())
+    };
+    PyObject* varray = PyArray_SimpleNewFromData(2, &vsize[0], type, (void*)(v.data()));
+    return varray;
+}
+
+#endif
 
 #else // fallback if we don't have numpy: copy every element of the given vector
 
@@ -366,6 +461,41 @@ bool plot(const std::vector<Numeric> &x, const std::vector<Numeric> &y, const st
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool plot(const T1& x, const T2& y, const std::map<std::string, std::string>& keywords)
+{
+    assert(x.size() == y.size());
+
+    // using numpy arrays
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    // construct positional args
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xarray);
+    PyTuple_SetItem(args, 1, yarray);
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_plot, args, kwargs);
+
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 // TODO - it should be possible to make this work by implementing
 // a non-numpy alternative for `get_2darray()`.
@@ -497,6 +627,41 @@ bool stem(const std::vector<Numeric> &x, const std::vector<Numeric> &y, const st
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool stem(const T1& x, const T2& y, const std::map<std::string, std::string>& keywords)
+{
+    assert(x.size() == y.size());
+
+    // using numpy arrays
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    // construct positional args
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xarray);
+    PyTuple_SetItem(args, 1, yarray);
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str, PyString_FromString(it.second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_stem, args, kwargs);
+
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template< typename Numeric >
 bool fill(const std::vector<Numeric>& x, const std::vector<Numeric>& y, const std::map<std::string, std::string>& keywords)
 {
@@ -526,6 +691,41 @@ bool fill(const std::vector<Numeric>& x, const std::vector<Numeric>& y, const st
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool fill(const T1& x, const T2& y, const std::map<std::string, std::string>& keywords)
+{
+    assert(x.size() == y.size());
+
+    // using numpy arrays
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    // construct positional args
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xarray);
+    PyTuple_SetItem(args, 1, yarray);
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyUnicode_FromString(it.second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_fill, args, kwargs);
+
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template< typename Numeric >
 bool fill_between(const std::vector<Numeric>& x, const std::vector<Numeric>& y1, const std::vector<Numeric>& y2, const std::map<std::string, std::string>& keywords)
@@ -559,6 +759,41 @@ bool fill_between(const std::vector<Numeric>& x, const std::vector<Numeric>& y1,
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename T3,
+typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>()>>
+bool fill_between(const T1& x, const T2& y1, const T3& y2, const std::map<std::string, std::string>& keywords)
+{
+    assert(x.size() == y1.size() && y1.size() == y2.size());
+
+    // using numpy arrays
+    PyObject* xarray = get_array(x);
+    PyObject* y1array = get_array(y1);
+    PyObject* y2array = get_array(y2);
+
+    // construct positional args
+    PyObject* args = PyTuple_New(3);
+    PyTuple_SetItem(args, 0, xarray);
+    PyTuple_SetItem(args, 1, y1array);
+    PyTuple_SetItem(args, 2, y2array);
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyUnicode_FromString(it.second.c_str()));
+    }
+
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+#endif
+
 template< typename Numeric>
 bool hist(const std::vector<Numeric>& y, long bins=10,std::string color="b",
           double alpha=1.0, bool cumulative=false)
@@ -586,6 +821,35 @@ bool hist(const std::vector<Numeric>& y, long bins=10,std::string color="b",
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+bool hist(const T& y, int bins=10, std::string color="b", double alpha=1.0, bool cumulative=false)
+{
+    PyObject* yarray = get_array(y);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "bins", PyLong_FromLong(bins));
+    PyDict_SetItemString(kwargs, "color", PyString_FromString(color.c_str()));
+    PyDict_SetItemString(kwargs, "alpha", PyFloat_FromDouble(alpha));
+    PyDict_SetItemString(kwargs, "cumulative", cumulative ? Py_True : Py_False);
+
+    PyObject* plot_args = PyTuple_New(1);
+
+    PyTuple_SetItem(plot_args, 0, yarray);
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_hist, plot_args, kwargs);
+
+    Py_DECREF(plot_args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 #ifndef WITHOUT_NUMPY
     namespace internal {
@@ -690,6 +954,40 @@ bool scatter(const std::vector<NumericX>& x,
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool scatter(const T1& x, const T2& y, const double s=1.0, // The marker size in points**2
+    const std::unordered_map<std::string, std::string>& keywords={})
+{
+    assert(x.size() == y.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "s", PyLong_FromLong(s));
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
+    }
+
+    PyObject* plot_args = PyTuple_New(2);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_scatter, plot_args, kwargs);
+
+    Py_DECREF(plot_args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template <typename Numeric>
 bool bar(const std::vector<Numeric> &               x,
          const std::vector<Numeric> &               y,
@@ -728,6 +1026,42 @@ bool bar(const std::vector<Numeric> &               x,
   return res;
 }
 
+// for Eigen suppport
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool bar(const T1& x, const T2& y, const std::string ec="black", const std::string ls="-", double lw=1.0,
+    const std::map<std::string, std::string>& keywords={})
+{
+    PyObject * xarray = get_array(x);
+    PyObject * yarray = get_array(y);
+
+    PyObject * kwargs = PyDict_New();
+
+    PyDict_SetItemString(kwargs, "ec", PyString_FromString(ec.c_str()));
+    PyDict_SetItemString(kwargs, "ls", PyString_FromString(ls.c_str()));
+    PyDict_SetItemString(kwargs, "lw", PyFloat_FromDouble(lw));
+
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str));
+    }
+
+    PyObject* plot_args = PyTuple_New(2);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_bar, plot_args, kwargs);
+
+    Py_DECREF(plot_args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template <typename Numeric>
 bool bar(const std::vector<Numeric> &               y,
          std::string                                ec       = "black",
@@ -741,6 +1075,20 @@ bool bar(const std::vector<Numeric> &               y,
 
   return bar(x, y, ec, ls, lw, keywords);
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+bool bar(const T& y, std::string ec="black", std::string ls="-", double lw=1.0, const std::map<std::string, std::string>& keywords={})
+{
+    Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
+    for (size_t i = 0; i < x.size(); ++i) x[i] = i;
+
+    return bar(x, y, ec, ls, lw, keywords);
+}
+
+#endif
 
 inline bool subplots_adjust(const std::map<std::string, double>& keywords = {})
 {
@@ -763,6 +1111,32 @@ inline bool subplots_adjust(const std::map<std::string, double>& keywords = {})
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+inline bool subplots_adjust(const std::map<std::string, double>& keywords={})
+{
+    PyObject* kwargs = PyDict_New();
+
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyFloat_FromDouble(it.second));
+    }
+
+    PyObject* plot_args = PyTuple_New(0);
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_subplots_adjust, plot_args, kwargs);
+
+    Py_DECREF(plot_args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template< typename Numeric>
 bool named_hist(std::string label,const std::vector<Numeric>& y, long bins=10, std::string color="b", double alpha=1.0)
@@ -788,6 +1162,34 @@ bool named_hist(std::string label,const std::vector<Numeric>& y, long bins=10, s
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+bool named_hist(std::string& label, const T& y, int bins=10, std::string color="b", double alpha=1.0)
+{
+    PyObject* yarray = get_array(y);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "label", PyString_FromString(label.c_str()));
+    PyDict_SetItemString(kwargs, "bins", PyLong_FromLong(bins));
+    PyDict_SetItemString(kwargs, "color", PyString_FromString(color.c_str()));
+    PyDict_SetItemString(kwargs, "alpha", PyFloat_FromDouble(alpha));
+
+    PyObject* plot_args = PyTuple_New(1);
+    PyTuple_SetItem(plot_args, 0, yarray);
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_hist, plot_args, kwargs);
+
+    Py_DECREF(plot_args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template<typename NumericX, typename NumericY>
 bool plot(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const std::string& s = "")
 {
@@ -810,6 +1212,34 @@ bool plot(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const 
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool plot(const T1& x, const T2& y, const std::string& s="")
+{
+    assert(x.size() == y.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* pystring = PyString_FromString(s.c_str());
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, pystring);
+
+    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_plot, plot_args);
+
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template<typename NumericX, typename NumericY, typename NumericU, typename NumericW>
 bool quiver(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const std::vector<NumericU>& u, const std::vector<NumericW>& w, const std::map<std::string, std::string>& keywords = {})
@@ -845,6 +1275,45 @@ bool quiver(const std::vector<NumericX>& x, const std::vector<NumericY>& y, cons
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename T3, typename T4,
+typename U = typename std::enable_if<
+is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>() && is_Eigen_1D_Array<T4>()>>
+bool quiver(const T1& x, const T2& y, const T3& u, const T4& w, const std::map<std::string, std::string>& keywords={})
+{
+    assert(x.size() == y.size() && x.size() == u.size() && u.size() == w.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+    PyObject* uarray = get_array(u);
+    PyObject* warray = get_array(w);
+
+    PyObject* plot_args = PyTuple_New(4);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, uarray);
+    PyTuple_SetItem(plot_args, 3, warray);
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for(const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyUnicode_FromString(it.second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_quiver, plot_args, kwargs);
+
+    Py_DECREF(kwargs);
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template<typename NumericX, typename NumericY>
 bool stem(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const std::string& s = "")
 {
@@ -870,6 +1339,32 @@ bool stem(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const 
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_2D_Array<T2>()>>
+bool stem(const T1& x, const T2& y, const std::string& s="")
+{
+    assert(x.size() == y.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 0, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(s.c_str()));
+
+    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_stem, plot_args);
+
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template<typename NumericX, typename NumericY>
 bool semilogx(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const std::string& s = "")
 {
@@ -892,6 +1387,32 @@ bool semilogx(const std::vector<NumericX>& x, const std::vector<NumericY>& y, co
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool semilogx(const T1& x, const T2& y, const std::string& s="")
+{
+    assert(x.size() == y.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(s.c_str()));
+
+    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_semilogx, plot_args);
+
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template<typename NumericX, typename NumericY>
 bool semilogy(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const std::string& s = "")
@@ -916,6 +1437,32 @@ bool semilogy(const std::vector<NumericX>& x, const std::vector<NumericY>& y, co
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool semilogy(const T1& x, const T2& y, const std::string& s="")
+{
+    assert(x.size() == y.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(s.c_str()));
+
+    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_semilogy, plot_args);
+
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template<typename NumericX, typename NumericY>
 bool loglog(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const std::string& s = "")
 {
@@ -938,6 +1485,32 @@ bool loglog(const std::vector<NumericX>& x, const std::vector<NumericY>& y, cons
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool loglog(const T1& x, const T2& y, const std::string& s="")
+{
+    assert(x.size() == y.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(s.c_str()));
+
+    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_loglog, plot_args);
+
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template<typename NumericX, typename NumericY>
 bool errorbar(const std::vector<NumericX> &x, const std::vector<NumericY> &y, const std::vector<NumericX> &yerr, const std::map<std::string, std::string> &keywords = {})
@@ -974,6 +1547,44 @@ bool errorbar(const std::vector<NumericX> &x, const std::vector<NumericY> &y, co
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename T3, typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>()>>
+bool errorbar(const T1& x, const T2& y, const T3& yerr, const std::map<std::string, std::string>& keywords={})
+{
+    assert(x.size() == y.size());
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+    PyObject* yerrarray = get_array(yerr);
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
+    }
+
+    PyDict_SetItemString(kwargs, "yerr", yerrarray);
+
+    PyObject *plot_args = PyTuple_New(2);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+
+    PyObject *res = PyObject_Call(detail::_interpreter::get().s_python_function_errorbar, plot_args, kwargs);
+
+    Py_DECREF(kwargs);
+    Py_DECREF(plot_args);
+
+    if (res) Py_DECREF(res);
+    else throw std::runtime_error("Call to errorbar() failed.");
+
+    return res;
+}
+
+#endif
+
 template<typename Numeric>
 bool named_plot(const std::string& name, const std::vector<Numeric>& y, const std::string& format = "")
 {
@@ -997,6 +1608,33 @@ bool named_plot(const std::string& name, const std::vector<Numeric>& y, const st
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+bool named_plot(const std::string& name, const T& y, const std::string& format="")
+{
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "label", PyString_FromString(name.c_str()));
+
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(2);
+
+    PyTuple_SetItem(plot_args, 0, yarray);
+    PyTuple_SetItem(plot_args, 1, PyString_FromString(format.c_str()));
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_plot, plot_args, kwargs);
+
+    Py_DECREF(kwargs);
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template<typename Numeric>
 bool named_plot(const std::string& name, const std::vector<Numeric>& x, const std::vector<Numeric>& y, const std::string& format = "")
@@ -1023,6 +1661,33 @@ bool named_plot(const std::string& name, const std::vector<Numeric>& x, const st
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool named_plot(const std::string& name, const T1& x, const T2& y, const std::string& format="")
+{
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "label", PyString_FromString(name.c_str()));
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(format.c_str()));
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_plot, plot_args, kwargs);
+
+    Py_DECREF(kwargs);
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template<typename Numeric>
 bool named_semilogx(const std::string& name, const std::vector<Numeric>& x, const std::vector<Numeric>& y, const std::string& format = "")
 {
@@ -1047,6 +1712,34 @@ bool named_semilogx(const std::string& name, const std::vector<Numeric>& x, cons
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool named_semilogx(const std::string& name, const T1& x, const T2& y, const std::string& format="")
+{
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "label", PyString_FromString(name.c_str()));
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(format.c_str()));
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_semilogx, plot_args, kwargs);
+
+    Py_DECREF(kwargs);
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template<typename Numeric>
 bool named_semilogy(const std::string& name, const std::vector<Numeric>& x, const std::vector<Numeric>& y, const std::string& format = "")
@@ -1073,6 +1766,34 @@ bool named_semilogy(const std::string& name, const std::vector<Numeric>& x, cons
     return res;
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool named_semilogy(const std::string& name, const T1& x, const T2& y, const std::string& format="")
+{
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "label", PyString_FromString(name.c_str()));
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(format.c_str()));
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_semilogy, plot_args, kwargs);
+
+    Py_DECREF(kwargs);
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
+
 template<typename Numeric>
 bool named_loglog(const std::string& name, const std::vector<Numeric>& x, const std::vector<Numeric>& y, const std::string& format = "")
 {
@@ -1096,6 +1817,34 @@ bool named_loglog(const std::string& name, const std::vector<Numeric>& x, const 
 
     return res;
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+bool named_loglog(const std::string& name, const T1& x, const T2& y, const std::string& format="")
+{
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "label", PyString_FromString(name.c_str()));
+
+    PyObject* xarray = get_array(x);
+    PyObject* yarray = get_array(y);
+
+    PyObject* plot_args = PyTuple_New(3);
+    PyTuple_SetItem(plot_args, 0, xarray);
+    PyTuple_SetItem(plot_args, 1, yarray);
+    PyTuple_SetItem(plot_args, 2, PyString_FromString(format.c_str()));
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_loglog, plot_args, kwargs);
+
+    Py_DECREF(kwargs);
+    Py_DECREF(plot_args);
+    if (res) Py_DECREF(res);
+
+    return res;
+}
+
+#endif
 
 template<typename Numeric>
 bool plot(const std::vector<Numeric>& y, const std::string& format = "")
@@ -1121,6 +1870,35 @@ bool stem(const std::vector<Numeric>& y, const std::string& format = "")
     return stem(x, y, format);
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+bool plot(const T& y, const std::string& format="")
+{
+    Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
+    for (size_t i = 0; i < x.size(); ++i) x[i] = i;
+    return plot(x, y, format);
+}
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+bool plot(const T& y, const std::map<std::string, std::string>& keywords)
+{
+    Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
+    for (size_t i = 0; i < x.size(); ++i) x[i] = i;
+    return plot(x, y, keywords);
+}
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+bool stem(const T& y, const std::string& format="")
+{
+    Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
+    for (size_t i = 0; i < x.size(); ++i) x[i] = i;
+    return stem(x, y, format);
+}
+
+#endif
+
 template<typename Numeric>
 void text(Numeric x, Numeric y, const std::string& s = "")
 {
@@ -1135,7 +1913,6 @@ void text(Numeric x, Numeric y, const std::string& s = "")
     Py_DECREF(args);
     Py_DECREF(res);
 }
-
 
 inline long figure(long number = -1)
 {
