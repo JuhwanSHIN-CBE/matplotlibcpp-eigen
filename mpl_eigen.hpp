@@ -831,7 +831,7 @@ bool hist(const T& y, int bins=10, std::string color="b", double alpha=1.0, bool
     PyObject* yarray = get_array(y);
 
     PyObject* kwargs = PyDict_New();
-    PyDict_SetItemString(kwargs, "bins", PyLong_FromLong(bins));
+    PyDict_SetItemString(kwargs, "bins", PyInt_FromLong(bins));
     PyDict_SetItemString(kwargs, "color", PyString_FromString(color.c_str()));
     PyDict_SetItemString(kwargs, "alpha", PyFloat_FromDouble(alpha));
     PyDict_SetItemString(kwargs, "cumulative", cumulative ? Py_True : Py_False);
@@ -967,7 +967,7 @@ bool scatter(const T1& x, const T2& y, const double s=1.0, // The marker size in
     PyObject* yarray = get_array(y);
 
     PyObject* kwargs = PyDict_New();
-    PyDict_SetItemString(kwargs, "s", PyLong_FromLong(s));
+    PyDict_SetItemString(kwargs, "s", PyInt_FromLong(s));
     for (const auto& it : keywords)
     {
         PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
@@ -1172,7 +1172,7 @@ bool named_hist(std::string& label, const T& y, int bins=10, std::string color="
 
     PyObject* kwargs = PyDict_New();
     PyDict_SetItemString(kwargs, "label", PyString_FromString(label.c_str()));
-    PyDict_SetItemString(kwargs, "bins", PyLong_FromLong(bins));
+    PyDict_SetItemString(kwargs, "bins", PyInt_FromLong(bins));
     PyDict_SetItemString(kwargs, "color", PyString_FromString(color.c_str()));
     PyDict_SetItemString(kwargs, "alpha", PyFloat_FromDouble(alpha));
 
@@ -2102,11 +2102,72 @@ inline void xticks(const std::vector<Numeric> &ticks, const std::vector<std::str
     Py_DECREF(res);
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+inline void xticks(const T& ticks, const std::vector<std::string>& labels={}, const std::map<std::string, std::string>& keywords={})
+{
+    assert(labels.size() == 0 || ticks.size() == labels.size());
+
+    // using numpy array
+    PyObject* ticksarray = get_array(ticks);
+
+    PyObject* args;
+    if (labels.size() == 0)
+    {
+        // construct positional args
+        args = PyTuple_New(1);
+        PyTuple_SetItem(args, 0, ticksarray);
+    }
+    else
+    {
+        // make tuple of tick labels
+        PyObject* labelstuple = PyTuple_New(labels.size());
+        for (size_t i = 0; i < labels.size(); ++i)
+        {
+            PyTuple_SetItem(labelstuple, i, PyString_FromString(labels[i].c_str()));
+        }
+
+        // construct positional args
+        args = PyTuple_New(2);
+        PyTuple_SetItem(args, 0, ticksarray);
+        PyTuple_SetItem(args, 1, labelstuple);
+    }
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_xticks, args, kwargs);
+
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+
+    if (res) Py_DECREF(res);
+    else throw std::runtime_error("Call to xticks() failed");
+}
+
+#endif
+
 template<typename Numeric>
 inline void xticks(const std::vector<Numeric> &ticks, const std::map<std::string, std::string>& keywords)
 {
     xticks(ticks, {}, keywords);
 }
+
+// for Eigen support
+#ifdef EIGEN_SUPPORT
+
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+inline void xticks(const T& ticks, const std::map<std::string, std::string>& keywords)
+{
+    xticks(ticks, {}, keywords);
+}
+
+#endif
 
 template<typename Numeric>
 inline void yticks(const std::vector<Numeric> &ticks, const std::vector<std::string> &labels = {}, const std::map<std::string, std::string>& keywords = {})
@@ -2149,11 +2210,72 @@ inline void yticks(const std::vector<Numeric> &ticks, const std::vector<std::str
     Py_DECREF(res);
 }
 
+// for Eigen support
+#ifdef EIGEN_ENABLED
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+inline void xticks(const T& ticks, const std::vector<std::string>& labels={}, const std::map<std::string, std::string>& keywords={})
+{
+    assert(labels.size() == 0 || ticks.size() == labels.size());
+
+    // using numpy array
+    PyObject* ticksarray = get_array(ticks);
+
+    PyObject* args;
+    if (labels.size() == 0)
+    {
+        // construct positional args
+        args = PyTuple_New(1);
+        PyTuple_SetItem(args, 0, ticksarray);
+    }
+    else
+    {
+        // make tuple of tick labels
+        PyObject* labelstuple = PyTuple_New(labels.size());
+        for (size_t i = 0; i < labels.size(); ++i)
+        {
+            PyTuple_SetItem(labelstuple, i, PyString_FromString(labels[i].c_str()));
+        }
+
+        // construct positional args
+        args = PyTuple_New(2);
+        PyTuple_SetItem(args, 0, ticksarray);
+        PyTuple_SetItem(args, 1, labelstuple);
+    }
+
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (const auto& it : keywords)
+    {
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_yticks, args, kwargs);
+
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+
+    if (res) Py_DECREF(res);
+    else throw std::runtime_error("Call to yticks() failed");
+}
+
+#endif
+
 template<typename Numeric>
 inline void yticks(const std::vector<Numeric> &ticks, const std::map<std::string, std::string>& keywords)
 {
     yticks(ticks, {}, keywords);
 }
+
+// for Eigen support
+#ifdef EIGEN_ENABLED
+
+template <typename T, typename U = std::enable_if<is_Eigen_1D_Array<T>()>>
+inline void yticks(const T& ticks, const std::map<std::string, std::string>& keywords)
+{
+    yticks(ticks, {}, keywords);
+}
+
+#endif
 
 inline void tick_params(const std::map<std::string, std::string>& keywords, const std::string axis = "both")
 {
@@ -2647,6 +2769,44 @@ public:
             Py_DECREF(res);
         }
     }
+
+    // for Eigen support
+    #ifdef EIGEN_ENABLED
+    template <typename T1, typename T2, typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+    Plot(const std::string& name, const T1& x, const T2& y, const std::string& format="")
+    {
+        assert (x.size() == y.size());
+
+        PyObject* kwargs = PyDict_New();
+        if (name != "")
+        {
+            PyDict_SetItemString(kwargs, "label", PyString_FromString(name.c_str()));
+        }
+
+        PyObject* xarray = get_array(x);
+        PyObject* yarray = get_array(y);
+
+        PyObject* plot_args = PyTuple_New(3);
+        PyTuple_SetItem(plot_args, 0, xarray);
+        PyTuple_SetItem(plot_args, 1, yarray);
+        PyTuple_SetItem(plot_args, 2, PyString_FromString(format.c_str()));
+
+        PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_plot, plot_args, kwargs);
+
+        Py_DECREF(kwargs);
+        Py_DECREF(plot_args);
+
+        if (res)
+        {
+            line = PyList_GetItem(res, 0);
+            if (line) set_data_fct = PyObject_GetAttrString(line, "set_data");
+            else Py_DECREF(line);
+
+            Py_DECREF(res);
+        }
+    }
+    
+    #endif
 
     // shorter initialization with name or format only
     // basically calls line, = plot([], [])
