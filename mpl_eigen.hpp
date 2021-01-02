@@ -341,7 +341,7 @@ PyObject* get_array(const std::vector<Numeric>& v)
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 PyObject* get_array(const T& v)
 {
     detail::_interpreter::get();    // interpreter needs to be initialized for the numpy commands to work
@@ -389,7 +389,7 @@ PyObject* get_2darray(const std::vector<::std::vector<Numeric>>& v)
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_2D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_2D_Array<T>()>::type>
 PyObject* get_2darray(const T& v)
 {
     detail::_interpreter::get();    // interpreter needs to be initialized for the numpy commands to work
@@ -465,7 +465,7 @@ bool plot(const std::vector<Numeric> &x, const std::vector<Numeric> &y, const st
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool plot(const T1& x, const T2& y, const std::map<std::string, std::string>& keywords)
 {
     assert(x.size() == y.size());
@@ -630,7 +630,7 @@ bool stem(const std::vector<Numeric> &x, const std::vector<Numeric> &y, const st
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool stem(const T1& x, const T2& y, const std::map<std::string, std::string>& keywords)
 {
     assert(x.size() == y.size());
@@ -648,7 +648,7 @@ bool stem(const T1& x, const T2& y, const std::map<std::string, std::string>& ke
     PyObject* kwargs = PyDict_New();
     for (const auto& it : keywords)
     {
-        PyDict_SetItemString(kwargs, it.first.c_str, PyString_FromString(it.second.c_str()));
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
     }
 
     PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_stem, args, kwargs);
@@ -695,7 +695,7 @@ bool fill(const std::vector<Numeric>& x, const std::vector<Numeric>& y, const st
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool fill(const T1& x, const T2& y, const std::map<std::string, std::string>& keywords)
 {
     assert(x.size() == y.size());
@@ -763,7 +763,7 @@ bool fill_between(const std::vector<Numeric>& x, const std::vector<Numeric>& y1,
 #ifdef EIGEN_ENABLED
 
 template <typename T1, typename T2, typename T3,
-typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>()>>
+typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>()>::type>
 bool fill_between(const T1& x, const T2& y1, const T3& y2, const std::map<std::string, std::string>& keywords)
 {
     assert(x.size() == y1.size() && y1.size() == y2.size());
@@ -785,6 +785,8 @@ bool fill_between(const T1& x, const T2& y1, const T3& y2, const std::map<std::s
     {
         PyDict_SetItemString(kwargs, it.first.c_str(), PyUnicode_FromString(it.second.c_str()));
     }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_fill_between, args, kwargs);
 
     Py_DECREF(args);
     Py_DECREF(kwargs);
@@ -825,7 +827,7 @@ bool hist(const std::vector<Numeric>& y, long bins=10,std::string color="b",
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 bool hist(const T& y, int bins=10, std::string color="b", double alpha=1.0, bool cumulative=false)
 {
     PyObject* yarray = get_array(y);
@@ -957,7 +959,7 @@ bool scatter(const std::vector<NumericX>& x,
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool scatter(const T1& x, const T2& y, const double s=1.0, // The marker size in points**2
     const std::unordered_map<std::string, std::string>& keywords={})
 {
@@ -1029,7 +1031,7 @@ bool bar(const std::vector<Numeric> &               x,
 // for Eigen suppport
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool bar(const T1& x, const T2& y, const std::string ec="black", const std::string ls="-", double lw=1.0,
     const std::map<std::string, std::string>& keywords={})
 {
@@ -1044,7 +1046,7 @@ bool bar(const T1& x, const T2& y, const std::string ec="black", const std::stri
 
     for (const auto& it : keywords)
     {
-        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str));
+        PyDict_SetItemString(kwargs, it.first.c_str(), PyString_FromString(it.second.c_str()));
     }
 
     PyObject* plot_args = PyTuple_New(2);
@@ -1079,7 +1081,7 @@ bool bar(const std::vector<Numeric> &               y,
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 bool bar(const T& y, std::string ec="black", std::string ls="-", double lw=1.0, const std::map<std::string, std::string>& keywords={})
 {
     Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
@@ -1115,7 +1117,7 @@ inline bool subplots_adjust(const std::map<std::string, double>& keywords = {})
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 inline bool subplots_adjust(const std::map<std::string, double>& keywords={})
 {
     PyObject* kwargs = PyDict_New();
@@ -1165,7 +1167,7 @@ bool named_hist(std::string label,const std::vector<Numeric>& y, long bins=10, s
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 bool named_hist(std::string& label, const T& y, int bins=10, std::string color="b", double alpha=1.0)
 {
     PyObject* yarray = get_array(y);
@@ -1216,7 +1218,7 @@ bool plot(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const 
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool plot(const T1& x, const T2& y, const std::string& s="")
 {
     assert(x.size() == y.size());
@@ -1279,8 +1281,7 @@ bool quiver(const std::vector<NumericX>& x, const std::vector<NumericY>& y, cons
 #ifdef EIGEN_ENABLED
 
 template <typename T1, typename T2, typename T3, typename T4,
-typename U = typename std::enable_if<
-is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>() && is_Eigen_1D_Array<T4>()>>
+typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>() && is_Eigen_1D_Array<T4>()>::type>
 bool quiver(const T1& x, const T2& y, const T3& u, const T4& w, const std::map<std::string, std::string>& keywords={})
 {
     assert(x.size() == y.size() && x.size() == u.size() && u.size() == w.size());
@@ -1342,7 +1343,7 @@ bool stem(const std::vector<NumericX>& x, const std::vector<NumericY>& y, const 
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_2D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_2D_Array<T2>()>::type>
 bool stem(const T1& x, const T2& y, const std::string& s="")
 {
     assert(x.size() == y.size());
@@ -1391,7 +1392,7 @@ bool semilogx(const std::vector<NumericX>& x, const std::vector<NumericY>& y, co
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool semilogx(const T1& x, const T2& y, const std::string& s="")
 {
     assert(x.size() == y.size());
@@ -1440,7 +1441,7 @@ bool semilogy(const std::vector<NumericX>& x, const std::vector<NumericY>& y, co
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool semilogy(const T1& x, const T2& y, const std::string& s="")
 {
     assert(x.size() == y.size());
@@ -1489,7 +1490,7 @@ bool loglog(const std::vector<NumericX>& x, const std::vector<NumericY>& y, cons
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool loglog(const T1& x, const T2& y, const std::string& s="")
 {
     assert(x.size() == y.size());
@@ -1550,7 +1551,7 @@ bool errorbar(const std::vector<NumericX> &x, const std::vector<NumericY> &y, co
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename T3, typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>()>>
+template <typename T1, typename T2, typename T3, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>() && is_Eigen_1D_Array<T3>()>::type>
 bool errorbar(const T1& x, const T2& y, const T3& yerr, const std::map<std::string, std::string>& keywords={})
 {
     assert(x.size() == y.size());
@@ -1612,7 +1613,7 @@ bool named_plot(const std::string& name, const std::vector<Numeric>& y, const st
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 bool named_plot(const std::string& name, const T& y, const std::string& format="")
 {
     PyObject* kwargs = PyDict_New();
@@ -1664,7 +1665,7 @@ bool named_plot(const std::string& name, const std::vector<Numeric>& x, const st
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool named_plot(const std::string& name, const T1& x, const T2& y, const std::string& format="")
 {
     PyObject* kwargs = PyDict_New();
@@ -1673,6 +1674,9 @@ bool named_plot(const std::string& name, const T1& x, const T2& y, const std::st
     PyObject* xarray = get_array(x);
     PyObject* yarray = get_array(y);
 
+    PyObject* pystring = PyString_FromString(name.c_str());
+
+    PyObject* plot_args = PyTuple_New(3);
     PyTuple_SetItem(plot_args, 0, xarray);
     PyTuple_SetItem(plot_args, 1, yarray);
     PyTuple_SetItem(plot_args, 2, PyString_FromString(format.c_str()));
@@ -1716,7 +1720,7 @@ bool named_semilogx(const std::string& name, const std::vector<Numeric>& x, cons
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool named_semilogx(const std::string& name, const T1& x, const T2& y, const std::string& format="")
 {
     PyObject* kwargs = PyDict_New();
@@ -1769,7 +1773,7 @@ bool named_semilogy(const std::string& name, const std::vector<Numeric>& x, cons
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool named_semilogy(const std::string& name, const T1& x, const T2& y, const std::string& format="")
 {
     PyObject* kwargs = PyDict_New();
@@ -1821,7 +1825,7 @@ bool named_loglog(const std::string& name, const std::vector<Numeric>& x, const 
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
 bool named_loglog(const std::string& name, const T1& x, const T2& y, const std::string& format="")
 {
     PyObject* kwargs = PyDict_New();
@@ -1873,7 +1877,7 @@ bool stem(const std::vector<Numeric>& y, const std::string& format = "")
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 bool plot(const T& y, const std::string& format="")
 {
     Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
@@ -1881,7 +1885,7 @@ bool plot(const T& y, const std::string& format="")
     return plot(x, y, format);
 }
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 bool plot(const T& y, const std::map<std::string, std::string>& keywords)
 {
     Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
@@ -1889,7 +1893,7 @@ bool plot(const T& y, const std::map<std::string, std::string>& keywords)
     return plot(x, y, keywords);
 }
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 bool stem(const T& y, const std::string& format="")
 {
     Eigen::Array<size_t, Eigen::Dynamic, 1> x(y.size());
@@ -2161,7 +2165,7 @@ inline void xticks(const std::vector<Numeric> &ticks, const std::map<std::string
 // for Eigen support
 #ifdef EIGEN_SUPPORT
 
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 inline void xticks(const T& ticks, const std::map<std::string, std::string>& keywords)
 {
     xticks(ticks, {}, keywords);
@@ -2212,8 +2216,8 @@ inline void yticks(const std::vector<Numeric> &ticks, const std::vector<std::str
 
 // for Eigen support
 #ifdef EIGEN_ENABLED
-template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>>
-inline void xticks(const T& ticks, const std::vector<std::string>& labels={}, const std::map<std::string, std::string>& keywords={})
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
+inline void yticks(const T& ticks, const std::vector<std::string>& labels={}, const std::map<std::string, std::string>& keywords={})
 {
     assert(labels.size() == 0 || ticks.size() == labels.size());
 
@@ -2269,7 +2273,7 @@ inline void yticks(const std::vector<Numeric> &ticks, const std::map<std::string
 // for Eigen support
 #ifdef EIGEN_ENABLED
 
-template <typename T, typename U = std::enable_if<is_Eigen_1D_Array<T>()>>
+template <typename T, typename U = typename std::enable_if<is_Eigen_1D_Array<T>()>::type>
 inline void yticks(const T& ticks, const std::map<std::string, std::string>& keywords)
 {
     yticks(ticks, {}, keywords);
@@ -2772,7 +2776,7 @@ public:
 
     // for Eigen support
     #ifdef EIGEN_ENABLED
-    template <typename T1, typename T2, typename U = std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>>
+    template <typename T1, typename T2, typename U = typename std::enable_if<is_Eigen_1D_Array<T1>() && is_Eigen_1D_Array<T2>()>::type>
     Plot(const std::string& name, const T1& x, const T2& y, const std::string& format="")
     {
         assert (x.size() == y.size());
