@@ -1,8 +1,6 @@
 #ifndef _MPL_C_H
 #define _MPL_C_H
 
-#include <stdlib.h>
-#include <stddef.h>
 #include <Python.h>
 
 #ifndef WITHOUT_NUMPY
@@ -21,6 +19,11 @@ typedef struct _MPL_Kwargs
     char** value;
     size_t len;
 } MPL_Kwargs;
+
+MPL_Kwargs MPL_Kwargs_New(const size_t len)
+{
+    
+}
 
 enum _MPL_Callable_Enum
 {
@@ -263,7 +266,7 @@ PyObject* _MPL_Get_2DArray(double* m, const size_t rows, const size_t cols)
 }
 #endif
 
-int MPL_Plot(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+int MPL_Plot(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords)
 {
     assert(xlen == ylen);
 
@@ -289,10 +292,34 @@ int MPL_Plot(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwa
     return (int)res;
 }
 
+int MPL_Plot_Label(double* x, const size_t xlen, double* y, const size_t ylen, const char* label, MPL_Kwargs* keywords)
+{
+    MPL_Kwargs kwargs;
+    size_t kwargs_len;
+    
+    if (keywords)
+    {
+
+    }
+    else
+    {
+        
+    }
+    
+}
+
+int MPL_Plot_Y_Only(double* y, const size_t ylen, MPL_Kwargs* keywords)
+{
+    double* x = (double*)malloc(sizeof(double)*ylen);
+    int res = MPL_Plot(x, ylen, y, ylen, keywords);
+    free(x);
+    return res;
+}
+
 int MPL_Plot_Surface(
     double* x, const size_t xrows, const size_t xcols,
     double* y, const size_t yrows, const size_t ycols,
-    double* z, const size_t zrows, const size_t zcols, MPL_Kwargs* keywords = NULL
+    double* z, const size_t zrows, const size_t zcols, MPL_Kwargs* keywords
 )
 {
     PyObject* pystring_mpl_toolkits = PyString_FromString("mpl_toolkits");
@@ -361,7 +388,7 @@ int MPL_Plot_Surface(
     return (int)res;
 }
 
-int MPL_Stem(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+int MPL_Stem(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords)
 {
     assert(xlen == ylen);
 
@@ -389,7 +416,7 @@ int MPL_Stem(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwa
     return (int)res;
 }
 
-int MPL_Fill(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+int MPL_Fill(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords)
 {
     assert(xlen == ylen);
 
@@ -420,7 +447,7 @@ int MPL_Fill(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwa
 int MPL_Fill_between(
     double* x, const size_t xlen,
     double* y1, const size_t y1len,
-    double* y2, const size_t y2len, MPL_Kwargs* keywords = NULL
+    double* y2, const size_t y2len, MPL_Kwargs* keywords
 )
 {
     assert(xlen == y1len == y2len);
@@ -451,7 +478,7 @@ int MPL_Fill_between(
     return (int)res;
 }
 
-int MPL_Hist(double* y, const size_t ylen, long bins = 10, const char* color = "b", double alpha = 1.0, int cumulative = 0)
+int MPL_Hist(double* y, const size_t ylen, long bins, const char* color, double alpha, int cumulative)
 {
     PyObject* yv = _MPL_Get_Array(y, ylen);
 
@@ -474,7 +501,7 @@ int MPL_Hist(double* y, const size_t ylen, long bins = 10, const char* color = "
 
 int MPL_Scatter(
     double* x, const size_t xlen, double* y, const size_t ylen,
-    double s = 1.0, MPL_Kwargs* keywords = NULL
+    double s, MPL_Kwargs* keywords
 )
 {
     assert(xlen == ylen);
@@ -506,8 +533,8 @@ int MPL_Scatter(
 
 int MPL_Bar(
     double* x, const size_t xlen, double* y, const size_t ylen,
-    const char* ec = "black", const char* ls = "-", double lw = 1.0,
-    MPL_Kwargs* keywords = NULL
+    const char* ec, const char* ls, double lw,
+    MPL_Kwargs* keywords
 )
 {
     PyObject* xv = _MPL_Get_Array(x, xlen);
@@ -537,7 +564,7 @@ int MPL_Bar(
     return (int)res;
 }
 
-inline int MPL_Subplots_Adjust(MPL_Kwargs* keywords = NULL)
+inline int MPL_Subplots_Adjust(MPL_Kwargs* keywords)
 {
     PyObject* args = PyTuple_New(0);
 
@@ -560,7 +587,7 @@ inline int MPL_Subplots_Adjust(MPL_Kwargs* keywords = NULL)
 
 int MPL_Quiver(
     double* x, const size_t xlen, double* y, const size_t ylen,
-    double* u, const size_t ulen, double* v, const size_t vlen, MPL_Kwargs* keywords = NULL
+    double* u, const size_t ulen, double* v, const size_t vlen, MPL_Kwargs* keywords
 )
 {
     assert(xlen == ylen == ulen == vlen);
@@ -593,7 +620,7 @@ int MPL_Quiver(
     return (int)res;
 }
 
-int MPL_Semilogx(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+int MPL_Semilogx(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords)
 {
     assert(xlen == ylen);
 
@@ -621,7 +648,7 @@ int MPL_Semilogx(double* x, const size_t xlen, double* y, const size_t ylen, MPL
     return (int)res;
 }
 
-int MPL_Semilogy(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+int MPL_Semilogy(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords)
 {
     assert(xlen == ylen);
 
@@ -649,7 +676,7 @@ int MPL_Semilogy(double* x, const size_t xlen, double* y, const size_t ylen, MPL
     return (int)res;
 }
 
-int MPL_LogLog(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+int MPL_LogLog(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords)
 {
     assert(xlen == ylen);
 
@@ -679,7 +706,7 @@ int MPL_LogLog(double* x, const size_t xlen, double* y, const size_t ylen, MPL_K
 
 int MPL_Errorbar(
     double* x, const size_t xlen, double* y, const size_t ylen,
-    double* yerr, const size_t yerrlen, MPL_Kwargs* keywords = NULL
+    double* yerr, const size_t yerrlen, MPL_Kwargs* keywords
 )
 {
     assert(xlen == ylen == yerrlen);
@@ -710,7 +737,7 @@ int MPL_Errorbar(
     return (int) res;
 }
 
-int text(double x, double y, const char* s = "")
+int MPL_Text(double x, double y, const char* s = "")
 {
     PyObject* args = PyTuple_New(3);
     PyTuple_SetItem(args, 0, PyFloat_FromDouble(x));
@@ -722,6 +749,143 @@ int text(double x, double y, const char* s = "")
     if (res) Py_DECREF(res);
 
     return (int) res;
+}
+
+// @param number Default value is -1
+int MPL_Figure(int number)
+{
+    PyObject* res;
+    if (number == -1)
+    {
+        res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Figure], _MPL_Empty_Tuple, NULL);
+    }
+    else
+    {
+        assert(number > 0);
+
+        PyObject* args = PyTuple_New(1);
+        PyTuple_SetItem(args, 0, PyLong_FromLong(number));
+        res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Figure], args, NULL);
+        Py_DECREF(args);
+    }
+    
+    PyObject* fig = PyObject_GetAttrString(res, "number");
+    if (!fig) return 0x01;
+    int figNum = PyLong_AsLong(fig);
+
+    Py_DECREF(res);
+    Py_DECREF(fig);
+    
+    return figNum;
+}
+
+int MPL_Fignum_Exists(int number)
+{
+    PyObject* args = PyTuple_New(1);
+    PyTuple_SetItem(args, 0, PyLong_FromLong(number));
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Fignum_Exists], args, NULL);
+    
+    int flag = PyObject_IsTrue(res);
+    Py_DECREF(res);
+    Py_DECREF(args);
+
+    return flag;
+}
+
+int MPL_Figure_Size(const size_t w, const size_t h)
+{
+    const size_t dpi = 100;
+
+    PyObject* size = PyTuple_New(2);
+    PyTuple_SetItem(size, 0, PyFloat_FromDouble((double)w / dpi));
+    PyTuple_SetItem(size, 1, PyFloat_FromDouble((double)h / dpi));
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "figsize", size);
+    PyDict_SetItemString(kwargs, "dpi", PyLong_FromSize_t(dpi));
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Figure], _MPL_Empty_Tuple, kwargs);
+    if (res) Py_DECREF(res);
+    Py_DecRef(kwargs);
+    Py_DECREF(size);
+
+    return (int)res;
+}
+
+int MPL_Legend()
+{
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Legend], _MPL_Empty_Tuple, NULL);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Xlim(double min, double max)
+{
+    PyObject* pair = PyTuple_New(2);
+    PyTuple_SetItem(pair, 0, PyFloat_FromDouble(min));
+    PyTuple_SetItem(pair, 1, PyFloat_FromDouble(max));
+
+    PyObject* args = PyTuple_New(1);
+    PyTuple_SetItem(args, 0, pair);
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Xlim], args, NULL);
+    if (res) Py_DECREF(res);
+    Py_DECREF(args);
+    Py_DECREF(pair);
+
+    return (int)res;
+}
+
+int MPL_Ylim(double min, double max)
+{
+    PyObject* pair = PyTuple_New(2);
+    PyTuple_SetItem(pair, 0, PyFloat_FromDouble(min));
+    PyTuple_SetItem(pair, 1, PyFloat_FromDouble(max));
+
+    PyObject* args = PyTuple_New(1);
+    PyTuple_SetItem(args, 0, pair);
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Ylim], args, NULL);
+    if (res) Py_DECREF(res);
+    Py_DECREF(args);
+    Py_DECREF(pair);
+
+    return (int)res;
+}
+
+double* MPL_Xlim_Get()
+{
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Xlim], _MPL_Empty_Tuple, NULL);
+    PyObject* min = PyTuple_GetItem(res, 0);
+    PyObject* max = PyTuple_GetItem(res, 1);
+
+    double* pair = (double*)malloc(sizeof(double)*2);
+    pair[0] = PyFloat_AsDouble(min);
+    pair[1] = PyFloat_AsDouble(max);
+
+    if (res) Py_DECREF(res);
+    Py_DECREF(min);
+    Py_DECREF(max);
+
+    return pair;
+}
+
+double* MPL_Ylim_Get()
+{
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Ylim], _MPL_Empty_Tuple, NULL);
+    PyObject* min = PyTuple_GetItem(res, 0);
+    PyObject* max = PyTuple_GetItem(res, 1);
+
+    double* pair = (double*)malloc(sizeof(double)*2);
+    pair[0] = PyFloat_AsDouble(min);
+    pair[1] = PyFloat_AsDouble(max);
+
+    if (res) Py_DECREF(res);
+    Py_DECREF(min);
+    Py_DECREF(max);
+
+    return pair;
 }
 
 #endif
