@@ -1,6 +1,8 @@
 #ifndef _MPL_C_H
 #define _MPL_C_H
 
+#include <stdlib.h>
+#include <stddef.h>
 #include <Python.h>
 
 #ifndef WITHOUT_NUMPY
@@ -13,51 +15,58 @@
 #   define PyInt_FromLong PyLong_FromLong
 #endif
 
+typedef struct _MPL_Kwargs
+{
+    char** key;
+    char** value;
+    size_t len;
+} MPL_Kwargs;
+
 enum _MPL_Callable_Enum
 {
-    MPL_PyPlot_Show,
-    MPL_PyPlot_Close,
-    MPL_PyPlot_Draw,
-    MPL_PyPlot_Pause,
-    MPL_PyPlot_Save,
-    MPL_PyPlot_Figure,
-    MPL_PyPlot_Fignum_Exists,
-    MPL_PyPlot_Plot,
-    MPL_PyPlot_Quiver,
-    MPL_PyPlot_Semilogx,
-    MPL_PyPlot_Semilogy,
-    MPL_PyPlot_Loglog,
-    MPL_PyPlot_Fill,
-    MPL_PyPlot_Fill_between,
-    MPL_PyPlot_Hist,
-    MPL_PyPlot_Imshow,
-    MPL_PyPlot_Scatter,
-    MPL_PyPlot_Subplot,
-    MPL_PyPlot_Subplot2grid,
-    MPL_PyPlot_Legend,
-    MPL_PyPlot_Xlim,
-    MPL_PyPlot_Ion,
-    MPL_PyPlot_Ginput,
-    MPL_PyPlot_Ylim,
-    MPL_PyPlot_Title,
-    MPL_PyPlot_Axis,
-    MPL_PyPlot_Xlabel,
-    MPL_PyPlot_Ylabel,
-    MPL_PyPlot_Xticks,
-    MPL_PyPlot_Yticks,
-    MPL_PyPlot_Tick_params,
-    MPL_PyPlot_Grid,
-    MPL_PyPlot_Clf,
-    MPL_PyPlot_Errorbar,
-    MPL_PyPlot_Annotate,
-    MPL_PyPlot_Tight_layout,
-    MPL_PyPlot_Stem,
-    MPL_PyPlot_Xkcd,
-    MPL_PyPlot_Text,
-    MPL_PyPlot_Suptitle,
-    MPL_PyPlot_Bar,
-    MPL_PyPlot_Subplots_Adjust,
-    MPL_ColorMap
+    _MPL_PyPlot_Show,
+    _MPL_PyPlot_Close,
+    _MPL_PyPlot_Draw,
+    _MPL_PyPlot_Pause,
+    _MPL_PyPlot_Save,
+    _MPL_PyPlot_Figure,
+    _MPL_PyPlot_Fignum_Exists,
+    _MPL_PyPlot_Plot,
+    _MPL_PyPlot_Quiver,
+    _MPL_PyPlot_Semilogx,
+    _MPL_PyPlot_Semilogy,
+    _MPL_PyPlot_Loglog,
+    _MPL_PyPlot_Fill,
+    _MPL_PyPlot_Fill_between,
+    _MPL_PyPlot_Hist,
+    _MPL_PyPlot_Imshow,
+    _MPL_PyPlot_Scatter,
+    _MPL_PyPlot_Subplot,
+    _MPL_PyPlot_Subplot2grid,
+    _MPL_PyPlot_Legend,
+    _MPL_PyPlot_Xlim,
+    _MPL_PyPlot_Ion,
+    _MPL_PyPlot_Ginput,
+    _MPL_PyPlot_Ylim,
+    _MPL_PyPlot_Title,
+    _MPL_PyPlot_Axis,
+    _MPL_PyPlot_Xlabel,
+    _MPL_PyPlot_Ylabel,
+    _MPL_PyPlot_Xticks,
+    _MPL_PyPlot_Yticks,
+    _MPL_PyPlot_Tick_params,
+    _MPL_PyPlot_Grid,
+    _MPL_PyPlot_Clf,
+    _MPL_PyPlot_Errorbar,
+    _MPL_PyPlot_Annotate,
+    _MPL_PyPlot_Tight_layout,
+    _MPL_PyPlot_Stem,
+    _MPL_PyPlot_Xkcd,
+    _MPL_PyPlot_Text,
+    _MPL_PyPlot_Suptitle,
+    _MPL_PyPlot_Bar,
+    _MPL_PyPlot_Subplots_Adjust,
+    _MPL_ColorMap
 };
 
 static PyObject* _MPL_Callable_List[44];
@@ -122,65 +131,597 @@ int MPL_Initialize()
     Py_DECREF(pystring_pyplot);
     if (!pyplot) return 0x03;
 
-    _MPL_Callable_List[MPL_ColorMap] = PyImport_Import(pystring_colormap);
+    _MPL_Callable_List[_MPL_ColorMap] = PyImport_Import(pystring_colormap);
     Py_DECREF(pystring_colormap);
-    if (!_MPL_Callable_List[MPL_ColorMap]) return 0x04;
+    if (!_MPL_Callable_List[_MPL_ColorMap]) return 0x04;
 
     PyObject* pylab = PyImport_Import(pystring_pylab);
     Py_DECREF(pystring_pylab);
     if (!pylab) return 0x05;
 
-    _MPL_Callable_List[MPL_PyPlot_Show] = _MPL_Import(matplotlib, "show");
-    _MPL_Callable_List[MPL_PyPlot_Close] = _MPL_Import(matplotlib, "close");
-    _MPL_Callable_List[MPL_PyPlot_Draw] = _MPL_Import(matplotlib, "draw");
-    _MPL_Callable_List[MPL_PyPlot_Pause] = _MPL_Import(matplotlib, "pause");
-    _MPL_Callable_List[MPL_PyPlot_Save] = _MPL_Import(matplotlib, "save");
-    _MPL_Callable_List[MPL_PyPlot_Figure] = _MPL_Import(matplotlib, "figure");
-    _MPL_Callable_List[MPL_PyPlot_Fignum_Exists] = _MPL_Import(matplotlib, "fignum_exists");
-    _MPL_Callable_List[MPL_PyPlot_Plot] = _MPL_Import(matplotlib, "plot");
-    _MPL_Callable_List[MPL_PyPlot_Quiver] = _MPL_Import(matplotlib, "quiver");
-    _MPL_Callable_List[MPL_PyPlot_Semilogx] = _MPL_Import(matplotlib, "semilogx");
-    _MPL_Callable_List[MPL_PyPlot_Semilogy] = _MPL_Import(matplotlib, "semilogy");
-    _MPL_Callable_List[MPL_PyPlot_Loglog] = _MPL_Import(matplotlib, "loglog");
-    _MPL_Callable_List[MPL_PyPlot_Fill] = _MPL_Import(matplotlib, "fill");
-    _MPL_Callable_List[MPL_PyPlot_Fill_between] = _MPL_Import(matplotlib, "fill_between");
-    _MPL_Callable_List[MPL_PyPlot_Hist] = _MPL_Import(matplotlib, "hist");
-    _MPL_Callable_List[MPL_PyPlot_Scatter] = _MPL_Import(matplotlib, "scatter");
-    _MPL_Callable_List[MPL_PyPlot_Subplot] = _MPL_Import(matplotlib, "subplot");
-    _MPL_Callable_List[MPL_PyPlot_Subplot2grid] = _MPL_Import(matplotlib, "subplot2grid");
-    _MPL_Callable_List[MPL_PyPlot_Legend] = _MPL_Import(matplotlib, "legend");
-    _MPL_Callable_List[MPL_PyPlot_Xlim] = _MPL_Import(matplotlib, "xlim");
-    _MPL_Callable_List[MPL_PyPlot_Ion] = _MPL_Import(matplotlib, "ion");
-    _MPL_Callable_List[MPL_PyPlot_Ginput] = _MPL_Import(matplotlib, "ginput");
-    _MPL_Callable_List[MPL_PyPlot_Ylim] = _MPL_Import(matplotlib, "ylim");
-    _MPL_Callable_List[MPL_PyPlot_Title] = _MPL_Import(matplotlib, "title");
-    _MPL_Callable_List[MPL_PyPlot_Axis] = _MPL_Import(matplotlib, "axis");
-    _MPL_Callable_List[MPL_PyPlot_Xlabel] = _MPL_Import(matplotlib, "xlabel");
-    _MPL_Callable_List[MPL_PyPlot_Ylabel] = _MPL_Import(matplotlib, "ylabel");
-    _MPL_Callable_List[MPL_PyPlot_Xticks] = _MPL_Import(matplotlib, "xticks");
-    _MPL_Callable_List[MPL_PyPlot_Yticks] = _MPL_Import(matplotlib, "yticks");
-    _MPL_Callable_List[MPL_PyPlot_Tick_params] = _MPL_Import(matplotlib, "tick_params");
-    _MPL_Callable_List[MPL_PyPlot_Grid] = _MPL_Import(matplotlib, "grid");
-    _MPL_Callable_List[MPL_PyPlot_Clf] = _MPL_Import(matplotlib, "clf");
-    _MPL_Callable_List[MPL_PyPlot_Errorbar] = _MPL_Import(matplotlib, "errorbar");
-    _MPL_Callable_List[MPL_PyPlot_Annotate] = _MPL_Import(matplotlib, "annotate");
-    _MPL_Callable_List[MPL_PyPlot_Tight_layout] = _MPL_Import(matplotlib, "tight_layout");
-    _MPL_Callable_List[MPL_PyPlot_Stem] = _MPL_Import(matplotlib, "stem");
-    _MPL_Callable_List[MPL_PyPlot_Xkcd] = _MPL_Import(matplotlib, "xkcd");
-    _MPL_Callable_List[MPL_PyPlot_Text] = _MPL_Import(matplotlib, "text");
-    _MPL_Callable_List[MPL_PyPlot_Suptitle] = _MPL_Import(matplotlib, "suptitle");
-    _MPL_Callable_List[MPL_PyPlot_Bar] = _MPL_Import(matplotlib, "bar");
+    _MPL_Callable_List[_MPL_PyPlot_Show] = _MPL_Import(matplotlib, "show");
+    _MPL_Callable_List[_MPL_PyPlot_Close] = _MPL_Import(matplotlib, "close");
+    _MPL_Callable_List[_MPL_PyPlot_Draw] = _MPL_Import(matplotlib, "draw");
+    _MPL_Callable_List[_MPL_PyPlot_Pause] = _MPL_Import(matplotlib, "pause");
+    _MPL_Callable_List[_MPL_PyPlot_Save] = _MPL_Import(matplotlib, "save");
+    _MPL_Callable_List[_MPL_PyPlot_Figure] = _MPL_Import(matplotlib, "figure");
+    _MPL_Callable_List[_MPL_PyPlot_Fignum_Exists] = _MPL_Import(matplotlib, "fignum_exists");
+    _MPL_Callable_List[_MPL_PyPlot_Plot] = _MPL_Import(matplotlib, "plot");
+    _MPL_Callable_List[_MPL_PyPlot_Quiver] = _MPL_Import(matplotlib, "quiver");
+    _MPL_Callable_List[_MPL_PyPlot_Semilogx] = _MPL_Import(matplotlib, "semilogx");
+    _MPL_Callable_List[_MPL_PyPlot_Semilogy] = _MPL_Import(matplotlib, "semilogy");
+    _MPL_Callable_List[_MPL_PyPlot_Loglog] = _MPL_Import(matplotlib, "loglog");
+    _MPL_Callable_List[_MPL_PyPlot_Fill] = _MPL_Import(matplotlib, "fill");
+    _MPL_Callable_List[_MPL_PyPlot_Fill_between] = _MPL_Import(matplotlib, "fill_between");
+    _MPL_Callable_List[_MPL_PyPlot_Hist] = _MPL_Import(matplotlib, "hist");
+    _MPL_Callable_List[_MPL_PyPlot_Imshow] = _MPL_Import(matplotlib, "imshow");
+    _MPL_Callable_List[_MPL_PyPlot_Scatter] = _MPL_Import(matplotlib, "scatter");
+    _MPL_Callable_List[_MPL_PyPlot_Subplot] = _MPL_Import(matplotlib, "subplot");
+    _MPL_Callable_List[_MPL_PyPlot_Subplot2grid] = _MPL_Import(matplotlib, "subplot2grid");
+    _MPL_Callable_List[_MPL_PyPlot_Legend] = _MPL_Import(matplotlib, "legend");
+    _MPL_Callable_List[_MPL_PyPlot_Xlim] = _MPL_Import(matplotlib, "xlim");
+    _MPL_Callable_List[_MPL_PyPlot_Ion] = _MPL_Import(matplotlib, "ion");
+    _MPL_Callable_List[_MPL_PyPlot_Ginput] = _MPL_Import(matplotlib, "ginput");
+    _MPL_Callable_List[_MPL_PyPlot_Ylim] = _MPL_Import(matplotlib, "ylim");
+    _MPL_Callable_List[_MPL_PyPlot_Title] = _MPL_Import(matplotlib, "title");
+    _MPL_Callable_List[_MPL_PyPlot_Axis] = _MPL_Import(matplotlib, "axis");
+    _MPL_Callable_List[_MPL_PyPlot_Xlabel] = _MPL_Import(matplotlib, "xlabel");
+    _MPL_Callable_List[_MPL_PyPlot_Ylabel] = _MPL_Import(matplotlib, "ylabel");
+    _MPL_Callable_List[_MPL_PyPlot_Xticks] = _MPL_Import(matplotlib, "xticks");
+    _MPL_Callable_List[_MPL_PyPlot_Yticks] = _MPL_Import(matplotlib, "yticks");
+    _MPL_Callable_List[_MPL_PyPlot_Tick_params] = _MPL_Import(matplotlib, "tick_params");
+    _MPL_Callable_List[_MPL_PyPlot_Grid] = _MPL_Import(matplotlib, "grid");
+    _MPL_Callable_List[_MPL_PyPlot_Clf] = _MPL_Import(matplotlib, "clf");
+    _MPL_Callable_List[_MPL_PyPlot_Errorbar] = _MPL_Import(matplotlib, "errorbar");
+    _MPL_Callable_List[_MPL_PyPlot_Annotate] = _MPL_Import(matplotlib, "annotate");
+    _MPL_Callable_List[_MPL_PyPlot_Tight_layout] = _MPL_Import(matplotlib, "tight_layout");
+    _MPL_Callable_List[_MPL_PyPlot_Stem] = _MPL_Import(matplotlib, "stem");
+    _MPL_Callable_List[_MPL_PyPlot_Xkcd] = _MPL_Import(matplotlib, "xkcd");
+    _MPL_Callable_List[_MPL_PyPlot_Text] = _MPL_Import(matplotlib, "text");
+    _MPL_Callable_List[_MPL_PyPlot_Suptitle] = _MPL_Import(matplotlib, "suptitle");
+    _MPL_Callable_List[_MPL_PyPlot_Bar] = _MPL_Import(matplotlib, "ba");
 
     #ifndef WITHOUT_NUMPY
-    _MPL_Callable_List[MPL_PyPlot_Imshow] = _MPL_Import(matplotlib, "imshow");
+    _MPL_Callable_List[_MPL_PyPlot_Imshow] = _MPL_Import(matplotlib, "imshow");
     #endif
-    
+
     _MPL_Empty_Tuple = PyTuple_New(0);
+
+    return 0x00;
+}
+
+int MPL_Finalize()
+{
+    for (int i = 0; i < 44; ++i) Py_DECREF(_MPL_Callable_List[i]);
+    Py_DECREF(_MPL_Empty_Tuple);
+    Py_Finalize();
 
     return 0;
 }
 
+inline int MPL_Annotate(const char* annotation, double x, double y)
+{
+    PyObject* xy = PyTuple_New(2);
+    PyObject* str = PyString_FromString(annotation);
 
+    PyTuple_SetItem(xy, 0, PyFloat_FromDouble(x));
+    PyTuple_SetItem(xy, 1, PyFloat_FromDouble(y));
 
+    PyObject* args = PyTuple_New(1);
+    PyTuple_SetItem(args, 0, str);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "xy", xy);
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Annotate], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+#ifndef WITHOUT_NUMPY
+PyObject* _MPL_Get_Array(double* v, const size_t len)
+{
+    npy_intp pyarraysize = len;
+    PyObject* pyarray = PyArray_SimpleNewFromData(1, &pyarraysize, NPY_DOUBLE, (void*)v);
+    return pyarray;
+}
+#else
+PyObject* _MPL_Get_Array(const double* v, const size_t len)
+{
+    PyObject* pyarray = PyList_New(len);
+    for (int i = 0; i < len; ++i) PyList_SetItem(pyarray, i, PyFloat_FromDouble(v[i]));
+    return pyarray;
+}
+#endif
+
+#ifndef WITHOUT_NUMPY
+PyObject* _MPL_Get_2DArray(double* m, const size_t rows, const size_t cols)
+{
+    npy_intp pyarraysize[2] = {rows, cols};
+    PyObject* pyarray = PyArray_SimpleNewFromData(2, pyarraysize, NPY_DOUBLE, (void*)m);
+    return pyarray;
+}
+#else
+PyObject* _MPL_Get_2DArray(double* m, const size_t rows, const size_t cols)
+{
+    PyObject* pyarray = Pylist_new(rows);
+    PyObject* row = (PyObject*)malloc(sizeof(PyObject*) * rows);
+    for (size_t i = 0; i < rows, ++i)
+    {
+        size_t curhome = i * rows;
+        row[i] = PyList_new(cols);
+        for (size_t j = 0; j < cols; ++j)
+        {
+            PyList_SetItem(row[i], j, PyFloat_FromDouble(m[curhome + j]));
+        }
+        PyList_SetItem(pyarray, i, row[i]);
+    }
+    return pyarray;
+}
+#endif
+
+int MPL_Plot(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+{
+    assert(xlen == ylen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Plot], args, kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Plot_Surface(
+    double* x, const size_t xrows, const size_t xcols,
+    double* y, const size_t yrows, const size_t ycols,
+    double* z, const size_t zrows, const size_t zcols, MPL_Kwargs* keywords = NULL
+)
+{
+    PyObject* pystring_mpl_toolkits = PyString_FromString("mpl_toolkits");
+    PyObject* pystring_mplot3d = PyString_FromString("mpl_toolkits.mplot3d");
+    if (!pystring_mpl_toolkits || !pystring_mplot3d) return 0x01;
+
+    PyObject* mpl_toolkits = PyImport_Import(pystring_mpl_toolkits);
+    Py_DECREF(pystring_mpl_toolkits);
+    if (!mpl_toolkits) return 0x02;
+
+    PyObject* mplot3d = PyImport_Import(pystring_mplot3d);
+    Py_DECREF(pystring_mplot3d);
+    if (!mplot3d) return 0x03;
+
+    assert(xrows == yrows == zrows);
+    assert(xcols == ycols == zcols);
+
+    PyObject* xm = _MPL_Get_2DArray(x, xrows, xcols);
+    PyObject* ym = _MPL_Get_2DArray(y, yrows, ycols);
+    PyObject* zm = _MPL_Get_2DArray(z, zrows, zcols);
+
+    PyObject* args = PyTuple_New(3);
+    PyTuple_SetItem(args, 0, xm);
+    PyTuple_SetItem(args, 1, ym);
+    PyTuple_SetItem(args, 2, zm);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "rstride", PyInt_FromLong(1));
+    PyDict_SetItemString(kwargs, "cstride", PyInt_FromLong(1));
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* fig = PyObject_CallObject(
+        _MPL_Callable_List[_MPL_PyPlot_Figure], _MPL_Empty_Tuple
+    );
+    if (!fig) return 0x04;
+
+    PyObject* gca_kwargs = PyDict_New();
+    PyDict_SetItemString(gca_kwargs, "projection", PyString_FromString("3d"));
+
+    PyObject* gca = PyObject_GetAttrString(fig, "gca");
+    if (!gca) return 0x05;
+    Py_INCREF(gca);
+    PyObject* axis = PyObject_Call(gca, _MPL_Empty_Tuple, gca_kwargs);
+    if (!axis) return 0x06;
+    Py_DECREF(gca);
+    Py_DECREF(gca_kwargs);
+
+    PyObject* plot_surface = PyObject_GetAttrString(axis, "plot_surface");
+    if (!plot_surface) return 0x07;
+    Py_INCREF(plot_surface);
+    
+    PyObject* res = PyObject_Call(plot_surface, args, kwargs);
+    if (!res) return 0x08;
+    else Py_DECREF(res);
+    Py_DECREF(plot_surface);
+    Py_DECREF(axis);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+
+    return (int)res;
+}
+
+int MPL_Stem(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+{
+    assert(xlen == ylen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+    
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Stem], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Fill(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+{
+    assert(xlen == ylen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+    
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Fill], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Fill_between(
+    double* x, const size_t xlen,
+    double* y1, const size_t y1len,
+    double* y2, const size_t y2len, MPL_Kwargs* keywords = NULL
+)
+{
+    assert(xlen == y1len == y2len);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* y1v = _MPL_Get_Array(y1, y1len);
+    PyObject* y2v = _MPL_Get_Array(y2, y2len);
+
+    PyObject* args = PyTuple_New(3);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, y1v);
+    PyTuple_SetItem(args, 2, y2v);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+    
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Fill], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Hist(double* y, const size_t ylen, long bins = 10, const char* color = "b", double alpha = 1.0, int cumulative = 0)
+{
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(1);
+    PyTuple_SetItem(args, 0, yv);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "bins", PyLong_FromLong(bins));
+    PyDict_SetItemString(kwargs, "color", PyString_FromString("color"));
+    PyDict_SetItemString(kwargs, "alpha", PyFloat_FromDouble(alpha));
+    PyDict_SetItemString(kwargs, "cumulative", PyBool_FromLong(cumulative));
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Hist], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Scatter(
+    double* x, const size_t xlen, double* y, const size_t ylen,
+    double s = 1.0, MPL_Kwargs* keywords = NULL
+)
+{
+    assert(xlen == ylen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "s", PyLong_FromLong(s));
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Scatter], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Bar(
+    double* x, const size_t xlen, double* y, const size_t ylen,
+    const char* ec = "black", const char* ls = "-", double lw = 1.0,
+    MPL_Kwargs* keywords = NULL
+)
+{
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "ec", PyString_FromString(ec));
+    PyDict_SetItemString(kwargs, "ls", PyString_FromString(ls));
+    PyDict_SetItemString(kwargs, "lw", PyFloat_FromDouble(lw));
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Bar], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+inline int MPL_Subplots_Adjust(MPL_Kwargs* keywords = NULL)
+{
+    PyObject* args = PyTuple_New(0);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Subplots_Adjust], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Quiver(
+    double* x, const size_t xlen, double* y, const size_t ylen,
+    double* u, const size_t ulen, double* v, const size_t vlen, MPL_Kwargs* keywords = NULL
+)
+{
+    assert(xlen == ylen == ulen == vlen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+    PyObject* uv = _MPL_Get_Array(u, ulen);
+    PyObject* wv = _MPL_Get_Array(v, vlen);
+
+    PyObject* args = PyTuple_New(4);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+    PyTuple_SetItem(args, 2, uv);
+    PyTuple_SetItem(args, 3, wv);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Quiver], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Semilogx(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+{
+    assert(xlen == ylen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Semilogx], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Semilogy(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+{
+    assert(xlen == ylen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Semilogy], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_LogLog(double* x, const size_t xlen, double* y, const size_t ylen, MPL_Kwargs* keywords = NULL)
+{
+    assert(xlen == ylen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Loglog], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int)res;
+}
+
+int MPL_Errorbar(
+    double* x, const size_t xlen, double* y, const size_t ylen,
+    double* yerr, const size_t yerrlen, MPL_Kwargs* keywords = NULL
+)
+{
+    assert(xlen == ylen == yerrlen);
+
+    PyObject* xv = _MPL_Get_Array(x, xlen);
+    PyObject* yv = _MPL_Get_Array(y, ylen);
+    PyObject* yerrv = _MPL_Get_Array(yerr, yerrlen);
+
+    PyObject* args = PyTuple_New(2);
+    PyTuple_SetItem(args, 0, xv);
+    PyTuple_SetItem(args, 1, yv);
+
+    PyObject* kwargs = PyDict_New();
+    PyDict_SetItemString(kwargs, "yerr", yerrv);
+    if (keywords)
+    {
+        for (size_t i = 0; i < keywords->len; ++i)
+        {
+            PyDict_SetItemString(kwargs, keywords->key[i], PyString_FromString(keywords->value[i]));
+        }
+    }
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Errorbar], args, kwargs);
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
+    if (res) Py_DECREF(res);
+
+    return (int) res;
+}
+
+int text(double x, double y, const char* s = "")
+{
+    PyObject* args = PyTuple_New(3);
+    PyTuple_SetItem(args, 0, PyFloat_FromDouble(x));
+    PyTuple_SetItem(args, 1, PyFloat_FromDouble(y));
+    PyTuple_SetItem(args, 2, PyString_FromString(s));
+
+    PyObject* res = PyObject_Call(_MPL_Callable_List[_MPL_PyPlot_Text], args, NULL);
+    Py_DECREF(args);
+    if (res) Py_DECREF(res);
+
+    return (int) res;
+}
 
 #endif

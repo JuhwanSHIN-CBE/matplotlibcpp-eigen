@@ -38,13 +38,12 @@ s = """MPL_PyPlot_Show,
     MPL_PyPlot_Xkcd,
     MPL_PyPlot_Text,
     MPL_PyPlot_Suptitle,
-    MPL_PyPlot_Bar"""
+    MPL_PyPlot_Bar,
+    MPL_PyPlot_Subplots_Adjust,
+    MPL_ColorMap"""
 
-rest = """
-    PyObject *s_python_colormap;
-    PyObject *s_python_empty_tuple;"""
 sl = s.split("\n")
 for i in range(len(sl)): sl[i] = sl[i].strip()
 for sen in sl:
     buff = sen
-    print(f"_MPL_Callable_List[{sen[:-1]}] = _MPL_Import(matplotlib, \"{sen[11:-1].lower()}\");")
+    print(f"_{sen}")
